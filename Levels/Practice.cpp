@@ -25,8 +25,9 @@ private:
 
     // --- Game State Below ---
     int playerRadius_;
-    std::vector<Enemy> enemies;
+    std::vector<Enemy> enemies_;
     int enemyAmount_;
+    int enemySpeed_;
     Uint32 lastTime_;
     float deltaTime_;
     float survivalTime_;
@@ -35,6 +36,7 @@ private:
     const Uint32 FRAME_DELAY = 1000 / TARGET_FPS;
     int playerX_;
     int playerY_;
+    bool shieldOn_;
     // --- end: Game State --- 
 
 public:
@@ -53,10 +55,39 @@ public:
       survivalTime_(0.0f),
       shieldTime_(0.0f),
       playerX_(0),
-      playerY_(0)
+      playerY_(0),
+      shieldOn_(true)
     { 
     }
     // --- end: Constructor ---
+
+    // --- Handling Start ---
+    int startGame() {
+        // --- Error Checking --- 
+        if (!this->sdl.sdlInitialized()) { return -1; }
+        if (!this->sdl.imgInitialized()) { return -1; }
+        // --- end: Error Checking ---
+
+        // --- Start Menu ---
+        // Initializes enemyAmount and enemySpeed
+        std::string lineGot;
+        std::cout << "Input enemy amount: ";
+        std::getline(std::cin, lineGot);
+        this->enemyAmount_ = std::stoi(lineGot);
+
+        std::cout << "Input enemy speed: ";
+        std::getline(std::cin, lineGot);
+        this->enemySpeed_ = std::stoi(lineGot);
+
+        // --- end: Start Menu ---
+
+        // initialize game state
+        this->restart();
+
+        // run the main survival loop
+        return this->survivalGame();
+    }
+    // --- end: Handling Start ---
 
     // --- Restart ---
     // Resets enemies, survival time, and timing. Only method that reinitializes game state.
@@ -64,12 +95,13 @@ public:
         // --- Player Initialization ---
         // player is a member already constructed with radius playerRadius_
         this->survivalTime_ = 0.0f;
-        this->shieldTime_ = 3.0f;
+        this->shieldTime_ = 3.0f; 
+        this->shieldOn_ = true;
         // --- end: Player Initialization ---
 
         // --- Enemy Initialization ---
-        this->enemies.clear();
-        this->enemies.reserve(this->enemyAmount_);
+        this->enemies_.clear();
+        this->enemies_.reserve(this->enemyAmount_);
 
         // Create a random number generator
         std::random_device rd;  // seed
@@ -78,8 +110,16 @@ public:
         std::uniform_int_distribution<> yDist(0, this->windowHeight_); // y between 0 and windowHeight
         std::uniform_int_distribution<> vDist(150, 300); // Velocity distribution 
         
+        if (!this->enemySpeed_) {
+            this->enemySpeed_ = vDist(gen);
+        }
+
         for (int i = 0; i < this->enemyAmount_; i++) {
-            this->enemies.push_back(Enemy(xDist(gen), yDist(gen), 75, 75, vDist(gen), vDist(gen)));
+            this->enemies_.push_back(Enemy(
+                xDist(gen), yDist(gen), 
+                75, 75, 
+                this->enemySpeed_, this->enemySpeed_
+            ));
         }
         // --- end: Enemy Initialization ---
 
@@ -89,20 +129,6 @@ public:
     }
     // --- end: Restart ---
 
-    // --- Handling Start ---
-    int startGame() {
-        // --- Error Checking --- 
-        if (!this->sdl.sdlInitialized()) { return -1; }
-        if (!this->sdl.imgInitialized()) { return -1; }
-        // --- end: Error Checking ---
-
-        // initialize game state
-        this->restart();
-
-        // run the main survival loop
-        return this->survivalGame();
-    }
-    // --- end: Handling Start ---
 
     // --- Main Game ---
     // Returns 0 on quit, 1 if a restart was triggered (handled internally via restart()).
@@ -116,8 +142,6 @@ public:
         SDL_Color green { 6, 112, 0, 255 };
         SDL_Rect shieldRect { this->windowWidth_ - 100, 85, 35, 35 };
         // --- end: Score text ---
-
-        bool shieldOn = true;
 
         // --- Main Loop ---
         bool running = true;
@@ -135,7 +159,7 @@ public:
             this->deltaTime_ = (frameStart - this->lastTime_) / 1000.0f; // in seconds
             this->lastTime_ = frameStart;
             
-            if (!shieldOn) { this->survivalTime_ += this->deltaTime_; };
+            if (!this->shieldOn_) { this->survivalTime_ += this->deltaTime_; };
             this->shieldTime_ = std::max(0.0f, this->shieldTime_ - this->deltaTime_);
             // --- end: DeltaTime Stuff ---
             
@@ -149,7 +173,7 @@ public:
             std::string shieldText = std::to_string(static_cast<int>(this->shieldTime_)) + "s";
 
             if (static_cast<int>(this->shieldTime_) <= 0) {
-                shieldOn = false;
+                this->shieldOn_ = false;
             }
             // --- end: Shield stuff ---
 
@@ -159,13 +183,13 @@ public:
             this->player.updatePosition(this->playerX_, this->playerY_);
 
             // 2. Update enemies
-            for (auto& enemy : this->enemies) {
+            for (auto& enemy : this->enemies_) {
                 enemy.update(this->deltaTime_, this->windowWidth_, this->windowHeight_);
             }
 
             // 3. Check collisions
-            if (!shieldOn) {
-                for (auto& enemy : this->enemies) {
+            if (!this->shieldOn_) {
+                for (auto& enemy : this->enemies_) {
                     if (Collision::circleRectCollision(this->events.mouseX(), this->events.mouseY(), this->playerRadius_, enemy.rect())) {
                         // Enter loss flow: lost() will handle showing the screen and return 1 to restart, 0 to quit.
                         int lostResult = this->lost();
@@ -183,11 +207,11 @@ public:
 
             // 4. Render everything
             this->player.render(this->window.renderer());
-            for (auto& enemy : this->enemies) {
+            for (auto& enemy : this->enemies_) {
                 enemy.render(this->window.renderer());
             }
             Texture::renderText(this->window.renderer(), scoreText, font, white, scoreRect);
-            if (shieldOn) {
+            if (this->shieldOn_) {
                 Texture::renderText(this->window.renderer(), shieldText, font, green, shieldRect);
             } else {
                 Texture::renderText(this->window.renderer(), shieldText, font, red, shieldRect);
