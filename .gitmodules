@@ -1,0 +1,3 @@
+[submodule "SDLLibrary"]
+	path = SDLLibrary
+	url = git@github.com:skele6011/SDLLibrary.git

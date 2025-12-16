@@ -1,24 +1,46 @@
 #!/bin/bash
 
+# Disable history expansion (important because of '!' in folder path)
+set +H
+
 # Enable nullglob so globs expand to nothing if no matches
 shopt -s nullglob
 
 # Path to the directory of this script
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Compiler flags (include all relevant directories)
-CXXFLAGS="-std=c++17 -Wall -Wextra -I$DIR/Core -I$DIR/Utils -I$DIR/Levels"
+# Compiler and flags
+CXX=g++
+CXXFLAGS="-std=c++17 -Wall -Wextra -I$DIR/SDLLibrary/Core -I$DIR/SDLLibrary/Utils -I$DIR/Levels"
 
 # Gather all source files
-SRCS=(
-    "$DIR/main.cpp"
-    "$DIR/Core/"*.cpp
-    "$DIR/Utils/"*.cpp
-    "$DIR/Levels/"*.cpp
-)
+SRCS=()
+# Add main.cpp
+SRCS+=("$DIR/main.cpp")
 
-# Print all sources for debugging
-echo "Compiling the following sources:"
+# SDLLibrary Core files
+for file in "$DIR/SDLLibrary/Core/"*.cpp; do
+    [ -f "$file" ] && SRCS+=("$file")
+done
+
+# SDLLibrary Utils files
+for file in "$DIR/SDLLibrary/Utils/"*.cpp; do
+    [ -f "$file" ] && SRCS+=("$file")
+done
+
+# Levels files
+for file in "$DIR/Levels/"*.cpp; do
+    [ -f "$file" ] && SRCS+=("$file")
+done
+
+# Top-level Utils files (Player, Enemy)
+for file in "$DIR/Utils/"*.cpp; do
+    [ -f "$file" ] && SRCS+=("$file")
+done
+
+
+# Debug: print all sources to compile
+echo "Sources to compile:"
 for src in "${SRCS[@]}"; do
     echo "  $src"
 done
@@ -26,13 +48,14 @@ done
 # Output executable
 OUT="$DIR/game"
 
-# SDL2 flags
+# SDL2 linker flags
 SDLFLAGS="$(sdl2-config --cflags --libs) -lSDL2_image -lSDL2_gfx -lSDL2_ttf"
 
-# Compile
-g++ $CXXFLAGS "${SRCS[@]}" -o "$OUT" $SDLFLAGS
+# Compile and link
+echo "Building..."
+$CXX "${SRCS[@]}" $CXXFLAGS -o "$OUT" $SDLFLAGS
 
-# Run if compilation succeeded
+# Check if compilation succeeded
 if [ $? -eq 0 ]; then
     echo "Build successful! Running..."
     "$OUT"

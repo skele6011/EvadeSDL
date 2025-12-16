@@ -5,12 +5,8 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 
-#include "Core/Window.hpp"
-#include "Core/Initializer.hpp"
-#include "Core/EventManager.hpp"
-#include "Core/Texture.hpp"
+#include "SDLLibrary/SDLLibrary.h"
 
-#include "Utils/Collision.hpp"
 #include "Utils/Enemy.hpp"
 #include "Utils/Player.hpp"
 

@@ -8,12 +8,8 @@
 #include <random>
 #include <algorithm>
 
-#include "../Core/Window.hpp"
-#include "../Core/Initializer.hpp"
-#include "../Core/EventManager.hpp"
-#include "../Core/Texture.hpp"
+#include "../SDLLibrary/SDLLibrary.h"
 
-#include "../Utils/Collision.hpp"
 #include "../Utils/Enemy.hpp"
 #include "../Utils/Player.hpp"
 
@@ -190,11 +186,11 @@ public:
             for (auto& enemy : this->enemies) {
                 enemy.render(this->window.renderer());
             }
-            Texture::handleFont(font, scoreText, white, this->window.renderer(), scoreRect);
+            Texture::renderText(this->window.renderer(), scoreText, font, white, scoreRect);
             if (shieldOn) {
-                Texture::handleFont(font, shieldText, green, this->window.renderer(), shieldRect);
+                Texture::renderText(this->window.renderer(), shieldText, font, green, shieldRect);
             } else {
-                Texture::handleFont(font, shieldText, red, this->window.renderer(), shieldRect);
+                Texture::renderText(this->window.renderer(), shieldText, font, red, shieldRect);
             }
 
             this->window.endFrame();  
@@ -252,13 +248,15 @@ public:
             this->window.beginFrame();
 
             // Draw lost message
-            Texture::handleFont(
-                font, "You Lost! Press R or Left-Click to Retry, ESC to Quit", 
-                white, this->window.renderer(), textRect
+            Texture::renderText(
+                this->window.renderer(),
+                "You Lost! Press R or Left-Click to Retry, ESC to Quit",
+                font, white, textRect
             );
-            Texture::handleFont(
-                font, "Time survived: " + std::to_string(static_cast<int>(this->survivalTime_)),
-                white, this->window.renderer(), scoreRect
+            Texture::renderText(
+                this->window.renderer(),
+                "Time survived: " + std::to_string(static_cast<int>(this->survivalTime_)),
+                font, white, scoreRect
             );
 
             this->window.endFrame();
