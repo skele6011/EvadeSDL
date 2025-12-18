@@ -170,9 +170,17 @@ void Practice::render() {
 
     Texture::renderText(this->window_.renderer(), std::to_string(static_cast<int>(this->survivalTime_)) + "s", this->basicFont_, white, scoreRect);
     if (this->shieldOn_) {
-        Texture::renderText(this->window_.renderer(), std::to_string(static_cast<int>(this->shieldTime_)) + "s", this->basicFont_, green, shieldRect);
+        Texture::renderText(
+            this->window_.renderer(), 
+            std::to_string(static_cast<int>(this->shieldTime_ + 1)) + "s", 
+            this->basicFont_, green, shieldRect
+        );
     } else {
-        Texture::renderText(this->window_.renderer(), std::to_string(static_cast<int>(this->shieldTime_)) + "s", this->basicFont_, red, shieldRect);
+        Texture::renderText(
+            this->window_.renderer(), 
+            std::to_string(static_cast<int>(this->shieldTime_)) + "s", 
+            this->basicFont_, red, shieldRect
+        );
     }
     // --- end: UI ---
 
