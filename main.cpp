@@ -4,6 +4,7 @@
 #include "SDLLibrary/Utils/Collision.hpp"
 #include <SDL2/SDL.h>
 // #include <iostream>
+#include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_video.h>
 #include <random>
 // #include <string>
@@ -12,7 +13,7 @@ enum class GameState { MENU, PLAYING, GAME_OVER };
 
 void gamePlay(Player& player, std::vector<Enemy>& enemies, EventManager& em,
               SDL_Renderer* renderer, int width, int height,
-              GameState& gameState, Uint32 spawnTime) {
+              GameState& gameState, Uint32 spawnTime, float dt) {
   if (gameState == GameState::PLAYING) {
     player.update(em.mouseX(), em.mouseY());
     player.render(renderer);
@@ -24,7 +25,7 @@ void gamePlay(Player& player, std::vector<Enemy>& enemies, EventManager& em,
     for (auto it = enemies.begin(); it != enemies.end(); ++it) {
       // Dereference first [(*it)], then update method on that class
       // [.update()]
-      (*it).update(width, height);
+      (*it).update(width, height, dt);
       (*it).render(renderer);
 
       bool collided =
@@ -97,14 +98,17 @@ int main() {
 
   std::vector<Enemy> enemies;
   for (int i = 0; i < 50; i++) {
-    enemies.emplace_back(distrX(gen), distrY(gen), 64, 64, "green", 1.5f,
-                         1.65f);
+    enemies.emplace_back(distrX(gen), distrY(gen), 64, 64, "green", 150.0f,
+                         165.0f);
   }
   // --- end: Create enemies ---
 
+  Uint32 lastFrame = SDL_GetTicks();
   bool running = true;
   while (running) {
     running = em.pollEvents();
+    Uint32 frameStart = SDL_GetTicks();
+    float dt = (frameStart - lastFrame) / 1000.0f;
 
     // Doesn't allow window-resize cheating
     if (gameState == GameState::PLAYING) {
@@ -116,15 +120,18 @@ int main() {
     window.beginFrame();
     // If playing, this will run
     gamePlay(player, enemies, em, renderer, em.windowWidth(), em.windowHeight(),
-             gameState, spawnTime);
+             gameState, spawnTime, dt);
     // If menu
     gameMenu(em, renderer, fontLarge, fontSmall, gameState, em.windowWidth(),
              em.windowHeight(), spawnTime);
 
     window.endFrame();
 
-    // std::cout << width << std::endl << height << std::endl;
-    SDL_Delay(5); // ~15 = ~60FPS
+    Uint32 frameTime = SDL_GetTicks() - frameStart;
+    if (frameTime < (1000 / 240)) {
+      SDL_Delay((1000 / 240) - frameTime);
+    }
+    lastFrame = frameStart;
   }
 
   return 0;

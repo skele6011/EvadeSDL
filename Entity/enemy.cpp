@@ -2,9 +2,9 @@
 #include <SDL2/SDL_render.h>
 
 // Need to make collisions work with wall
-void Enemy::update(int windowWidth, int windowHeight) {
-  this->currentX_ += this->velocityX_;
-  this->currentY_ += this->velocityY_;
+void Enemy::update(int windowWidth, int windowHeight, float dt) {
+  this->currentX_ += this->velocityX_ * dt;
+  this->currentY_ += this->velocityY_ * dt;
 
   // Right wall
   if (currentX_ + rect_.w >= windowWidth) {
