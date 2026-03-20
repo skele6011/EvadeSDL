@@ -5,15 +5,19 @@
 #include <SDL2/SDL.h>
 // #include <iostream>
 #include <SDL2/SDL_timer.h>
+#include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_video.h>
+#include <iomanip>
 #include <random>
-// #include <string>
+#include <sstream>
+#include <string>
 #include <vector>
 enum class GameState { MENU, PLAYING, GAME_OVER };
 
 void gamePlay(Player& player, std::vector<Enemy>& enemies, EventManager& em,
-              SDL_Renderer* renderer, int width, int height,
-              GameState& gameState, Uint32 spawnTime, float dt) {
+              SDL_Renderer* renderer, int windowWidth, int windowHeight,
+              GameState& gameState, Uint32 spawnTime, float dt,
+              TTF_Font* fontSmall) {
   if (gameState == GameState::PLAYING) {
     player.update(em.mouseX(), em.mouseY());
     player.render(renderer);
@@ -21,11 +25,27 @@ void gamePlay(Player& player, std::vector<Enemy>& enemies, EventManager& em,
     // Give 3 second shield
     bool shieldOn = (SDL_GetTicks() - spawnTime) < 3000;
 
+    // Timer
+    float survivalTime = (SDL_GetTicks() - spawnTime - 3000) / 1000.0f;
+    // Display timer
+    int timerWidth, timerHeight;
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(1) << survivalTime << "s";
+    std::string timerText = oss.str();
+    TTF_SizeText(fontSmall, "555.5s", &timerWidth, &timerHeight);
+    SDL_Rect timerRect = {(windowWidth - timerWidth) / 2, 20, timerWidth,
+                          timerHeight};
+    SDL_Color red = {220, 50, 50, 255};
+    SDL_Color green = {0, 255, 0, 255};
+    SDL_Color timerColor = shieldOn ? green : red;
+    timerText = shieldOn ? "0.0s" : timerText;
+    Texture::renderText(renderer, timerText, fontSmall, timerColor, timerRect);
+
     // Setup enemies & Collision
     for (auto it = enemies.begin(); it != enemies.end(); ++it) {
       // Dereference first [(*it)], then update method on that class
       // [.update()]
-      (*it).update(width, height, dt);
+      (*it).update(windowWidth, windowHeight, dt);
       (*it).render(renderer);
 
       bool collided =
@@ -87,7 +107,7 @@ int main() {
   EventManager em(window.window(), false);
 
   Player player(500, 500, 15);
-  GameState gameState = GameState::MENU; // Starts at game for now
+  GameState gameState = GameState::MENU;
   Uint32 spawnTime = SDL_GetTicks();
 
   // --- Create enemies ---
@@ -120,7 +140,7 @@ int main() {
     window.beginFrame();
     // If playing, this will run
     gamePlay(player, enemies, em, renderer, em.windowWidth(), em.windowHeight(),
-             gameState, spawnTime, dt);
+             gameState, spawnTime, dt, fontSmall);
     // If menu
     gameMenu(em, renderer, fontLarge, fontSmall, gameState, em.windowWidth(),
              em.windowHeight(), spawnTime);
