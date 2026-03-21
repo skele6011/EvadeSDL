@@ -4,10 +4,13 @@
 #include "Levels/Level1.hpp"
 #include "Levels/Level2.hpp"
 
+#include "Levels/Editor.hpp"
+
 #include "SDLLibrary/SDLLibrary.h"
 #include "SDLLibrary/Utils/Collision.hpp" // IWYU pragma: keep
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_video.h>
@@ -19,7 +22,7 @@
 #include <string>
 #include <vector> // IWYU pragma: keep
 
-enum class GameState { MENU, PLAYING, GAME_OVER };
+enum class GameState { MENU, PLAYING, GAME_OVER, EDITOR };
 
 void gameMenu(EventManager& em, SDL_Renderer* renderer, TTF_Font* fontLarge,
               TTF_Font* smallFont, GameState& gameState, int windowWidth,
@@ -68,6 +71,7 @@ int main() {
   std::random_device rd;
   std::mt19937 gen(rd());
 
+  Editor editor(em, smallFont);
   LevelBase* currentLevelObj =
       new LevelOne(player, em, smallFont, spawnTime, gen);
 
@@ -95,22 +99,24 @@ int main() {
       }
     }
 
+    if (gameState == GameState::EDITOR) {
+      bool continueEditor = editor.update(dt);
+      editor.render(renderer);
+      if (!continueEditor) {
+        gameState = GameState::MENU;
+      }
+    }
+
     if (gameState == GameState::MENU) {
       gameMenu(em, renderer, fontLarge, smallFont, gameState, em.windowWidth(),
                em.windowHeight(), spawnTime);
     }
 
-    // For testing
-    // if (em.isKeyPressed(SDLK_UP)) {
-    //   currentLevel++;
-    //   level = loadLevel(currentLevel, em.windowWidth(), em.windowHeight());
-    //   std::cout << currentLevel << std::endl;
-    // }
-    // if (em.isKeyPressed(SDLK_DOWN)) {
-    //   currentLevel--;
-    //   level = loadLevel(currentLevel, em.windowWidth(), em.windowHeight());
-    //   std::cout << currentLevel << std::endl;
-    // }
+    // For testing - Editor
+    if (em.isKeyPressed(SDLK_e) && em.isKeyDown(SDLK_LSHIFT)) {
+      SDL_ShowCursor(SDL_ENABLE);
+      gameState = GameState::EDITOR;
+    }
 
     window.endFrame();
 
