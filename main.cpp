@@ -1,144 +1,48 @@
-#include "Entity/enemy.hpp"
+#include "Entity/enemy.hpp" // IWYU pragma: keep
 #include "Entity/player.hpp"
 
 #include "Levels/Level1.hpp"
 #include "Levels/Level2.hpp"
 
 #include "SDLLibrary/SDLLibrary.h"
-#include "SDLLibrary/Utils/Collision.hpp"
+#include "SDLLibrary/Utils/Collision.hpp" // IWYU pragma: keep
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_video.h>
-#include <iostream>
+#include <iostream> // IWYU pragma: keep
 
-#include <iomanip>
+#include <iomanip> // IWYU pragma: keep
 #include <random>
-#include <sstream>
+#include <sstream> // IWYU pragma: keep
 #include <string>
-#include <vector>
+#include <vector> // IWYU pragma: keep
 
 enum class GameState { MENU, PLAYING, GAME_OVER };
 
-// Level loader (used in variable later)
-Level loadLevel(int levelNum, int w, int h) {
-  if (levelNum == 1)
-    return createLevel1(w, h, w / 2, h / 2);
-  if (levelNum == 2)
-    return createLevel2(w, h);
-  return createLevel1(w, h, w / 2, h / 2);
-}
-
-std::vector<Enemy> loadEnemies(const Level& level, std::mt19937& gen) {
-  std::uniform_int_distribution<> distrX(
-      level.spawnBounds.x, level.spawnBounds.x + level.spawnBounds.w);
-  std::uniform_int_distribution<> distrY(
-      level.spawnBounds.y, level.spawnBounds.y + level.spawnBounds.h);
-
-  std::vector<Enemy> enemies;
-  for (int i = 0; i < level.enemyCount; i++) {
-    enemies.emplace_back(distrX(gen), distrY(gen), 64, 64, "green",
-                         level.minSpeed, level.maxSpeed);
-  }
-
-  return enemies;
-}
-
-void gamePlay(Player& player, std::vector<Enemy>& enemies, EventManager& em,
-              SDL_Renderer* renderer, int windowWidth, int windowHeight,
-              GameState& gameState, Uint32 spawnTime, float dt,
-              TTF_Font* fontSmall, const Level& level) {
-  if (gameState == GameState::PLAYING) {
-    player.update(em.mouseX(), em.mouseY());
-    player.render(renderer);
-
-    // Give 3 second shield
-    bool shieldOn = (SDL_GetTicks() - spawnTime) < 3000;
-
-    // Make player stuck until shield is off (only through x-axis for now)
-    if (level.limitingWall.first != 0) {
-      std::cout << "Should be limited";
-      if (player.currentX() + player.radius() >= level.limitingWall.first) {
-        player.setPlayerX(level.limitingWall.first - player.radius());
-        std::cout << "Should be stuck";
-      }
-    }
-
-    // Timer
-    float survivalTime = (SDL_GetTicks() - spawnTime - 3000) / 1000.0f;
-    // Display timer
-    int timerWidth, timerHeight;
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(1) << survivalTime << "s";
-    std::string timerText = oss.str();
-    TTF_SizeText(fontSmall, "555.5s", &timerWidth, &timerHeight);
-    SDL_Rect timerRect = {(windowWidth - timerWidth) / 2, 20, timerWidth,
-                          timerHeight};
-    SDL_Color red = {220, 50, 50, 255};
-    SDL_Color green = {0, 255, 0, 255};
-    SDL_Color timerColor = shieldOn ? green : red;
-    timerText = shieldOn ? "0.0s" : timerText;
-    Texture::renderText(renderer, timerText, fontSmall, timerColor, timerRect);
-
-    for (const auto& wall : level.walls) {
-      boxRGBA(renderer, wall.x, wall.y, wall.x + wall.w, wall.y + wall.h, 100,
-              100, 100, 255);
-
-      // If player touches the wall, they die
-      bool collidedWithWall = Collision::circleRectCollision(
-          player.currentX(), player.currentY(), player.radius(), wall);
-      if (collidedWithWall && !shieldOn) {
-        player.setPlayerState(Player::PlayerState::DEAD);
-        gameState = GameState::MENU;
-      }
-    }
-
-    // Setup enemies & Collision
-    for (auto it = enemies.begin(); it != enemies.end(); ++it) {
-      // Dereference first [(*it)], then update method on that class
-      // [.update()]
-      (*it).update(windowWidth, windowHeight, dt);
-      (*it).render(renderer);
-
-      bool collided =
-          Collision::circleRectCollision(player.currentX(), player.currentY(),
-                                         player.radius(), (*it).getRect());
-      // If collided, dead.
-      if (collided && !shieldOn) {
-        player.setPlayerState(Player::PlayerState::DEAD);
-        gameState =
-            GameState::MENU; // Go to menu for now (change to GAME_OVER later)
-      }
-    }
-  }
-}
-
 void gameMenu(EventManager& em, SDL_Renderer* renderer, TTF_Font* fontLarge,
-              TTF_Font* fontSmall, GameState& gameState, int windowWidth,
+              TTF_Font* smallFont, GameState& gameState, int windowWidth,
               int windowHeight, Uint32& spawnTime) {
-  if (gameState == GameState::MENU) {
-    SDL_Color red = {220, 50, 50, 255};
-    SDL_Color gray = {180, 180, 180, 255};
+  SDL_Color red = {220, 50, 50, 255};
+  SDL_Color gray = {180, 180, 180, 255};
 
-    // Title
-    int tw, th;
-    TTF_SizeText(fontLarge, "Evade", &tw, &th);
-    SDL_Rect titleRect = {(windowWidth - tw) / 2, windowHeight / 2 - 100, tw,
-                          th};
-    Texture::renderText(renderer, "Evade", fontLarge, red, titleRect);
+  // Title
+  int tw, th;
+  TTF_SizeText(fontLarge, "Evade", &tw, &th);
+  SDL_Rect titleRect = {(windowWidth - tw) / 2, windowHeight / 2 - 100, tw, th};
+  Texture::renderText(renderer, "Evade", fontLarge, red, titleRect);
 
-    // Subtitle
-    int sw, sh;
-    TTF_SizeText(fontSmall, "Press SPACE to play", &sw, &sh);
-    SDL_Rect subRect = {(windowWidth - sw) / 2, windowHeight / 2 + 20, sw, sh};
-    Texture::renderText(renderer, "Press SPACE to play", fontSmall, gray,
-                        subRect);
+  // Subtitle
+  int sw, sh;
+  TTF_SizeText(smallFont, "Press SPACE to play", &sw, &sh);
+  SDL_Rect subRect = {(windowWidth - sw) / 2, windowHeight / 2 + 20, sw, sh};
+  Texture::renderText(renderer, "Press SPACE to play", smallFont, gray,
+                      subRect);
 
-    if (em.isKeyPressed(SDLK_SPACE)) {
-      spawnTime = SDL_GetTicks();
-      gameState = GameState::PLAYING;
-    }
+  if (em.isKeyPressed(SDLK_SPACE)) {
+    spawnTime = SDL_GetTicks();
+    gameState = GameState::PLAYING;
   }
 }
 
@@ -146,7 +50,7 @@ int main() {
   SDLInitializer Initializer(SDL_INIT_VIDEO | SDL_INIT_AUDIO,
                              IMG_INIT_PNG); // Image not used
 
-  TTF_Font* fontSmall =
+  TTF_Font* smallFont =
       Initializer.openFont("dejavu-sans/DejaVuSans-Bold.ttf", 36);
   TTF_Font* fontLarge =
       Initializer.openFont("dejavu-sans/DejaVuSans-Bold.ttf", 144);
@@ -157,18 +61,15 @@ int main() {
 
   EventManager em(window.window(), false);
 
-  // Level Managing
-  int currentLevel = 1;
-  Level level = loadLevel(currentLevel, em.windowWidth(), em.windowHeight());
-
-  Player player(level.playerSpawnX, level.playerSpawnY, 15);
+  Player player(em.windowWidth() / 2, em.windowHeight() / 2, 15);
   GameState gameState = GameState::MENU;
   Uint32 spawnTime = SDL_GetTicks();
 
   std::random_device rd;
   std::mt19937 gen(rd());
 
-  std::vector<Enemy> enemies = loadEnemies(level, gen);
+  LevelBase* currentLevelObj =
+      new LevelOne(player, em, smallFont, spawnTime, gen);
 
   Uint32 lastFrame = SDL_GetTicks();
   bool running = true;
@@ -185,24 +86,31 @@ int main() {
     }
 
     window.beginFrame();
-    // If playing, this will run
-    gamePlay(player, enemies, em, renderer, em.windowWidth(), em.windowHeight(),
-             gameState, spawnTime, dt, fontSmall, level);
-    // If menu
-    gameMenu(em, renderer, fontLarge, fontSmall, gameState, em.windowWidth(),
-             em.windowHeight(), spawnTime);
+
+    if (gameState == GameState::PLAYING) {
+      LevelResult result = currentLevelObj->update(dt);
+      currentLevelObj->render(renderer);
+      if (result == LevelResult::DIED) {
+        gameState = GameState::MENU; // No game-over screen yet
+      }
+    }
+
+    if (gameState == GameState::MENU) {
+      gameMenu(em, renderer, fontLarge, smallFont, gameState, em.windowWidth(),
+               em.windowHeight(), spawnTime);
+    }
 
     // For testing
-    if (em.isKeyPressed(SDLK_UP)) {
-      currentLevel++;
-      level = loadLevel(currentLevel, em.windowWidth(), em.windowHeight());
-      std::cout << currentLevel << std::endl;
-    }
-    if (em.isKeyPressed(SDLK_DOWN)) {
-      currentLevel--;
-      level = loadLevel(currentLevel, em.windowWidth(), em.windowHeight());
-      std::cout << currentLevel << std::endl;
-    }
+    // if (em.isKeyPressed(SDLK_UP)) {
+    //   currentLevel++;
+    //   level = loadLevel(currentLevel, em.windowWidth(), em.windowHeight());
+    //   std::cout << currentLevel << std::endl;
+    // }
+    // if (em.isKeyPressed(SDLK_DOWN)) {
+    //   currentLevel--;
+    //   level = loadLevel(currentLevel, em.windowWidth(), em.windowHeight());
+    //   std::cout << currentLevel << std::endl;
+    // }
 
     window.endFrame();
 
