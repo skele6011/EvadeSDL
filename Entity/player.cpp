@@ -14,6 +14,9 @@ int Player::currentX() { return this->currentX_; }
 int Player::currentY() { return this->currentY_; }
 int Player::radius() { return this->radius_; }
 
+void Player::setPlayerX(int x) { this->currentX_ = x; }
+void Player::setPlayerY(int y) { this->currentX_ = y; }
+
 void Player::setPlayerState(Player::PlayerState state) {
   this->playerState_ = state;
 }

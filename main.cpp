@@ -1,29 +1,69 @@
 #include "Entity/enemy.hpp"
 #include "Entity/player.hpp"
+
+#include "Levels/Level1.hpp"
+#include "Levels/Level2.hpp"
+
 #include "SDLLibrary/SDLLibrary.h"
 #include "SDLLibrary/Utils/Collision.hpp"
+
 #include <SDL2/SDL.h>
-// #include <iostream>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_video.h>
+#include <iostream>
+
 #include <iomanip>
 #include <random>
 #include <sstream>
 #include <string>
 #include <vector>
+
 enum class GameState { MENU, PLAYING, GAME_OVER };
+
+// Level loader (used in variable later)
+Level loadLevel(int levelNum, int w, int h) {
+  if (levelNum == 1)
+    return createLevel1(w, h, w / 2, h / 2);
+  if (levelNum == 2)
+    return createLevel2(w, h);
+  return createLevel1(w, h, w / 2, h / 2);
+}
+
+std::vector<Enemy> loadEnemies(const Level& level, std::mt19937& gen) {
+  std::uniform_int_distribution<> distrX(
+      level.spawnBounds.x, level.spawnBounds.x + level.spawnBounds.w);
+  std::uniform_int_distribution<> distrY(
+      level.spawnBounds.y, level.spawnBounds.y + level.spawnBounds.h);
+
+  std::vector<Enemy> enemies;
+  for (int i = 0; i < level.enemyCount; i++) {
+    enemies.emplace_back(distrX(gen), distrY(gen), 64, 64, "green",
+                         level.minSpeed, level.maxSpeed);
+  }
+
+  return enemies;
+}
 
 void gamePlay(Player& player, std::vector<Enemy>& enemies, EventManager& em,
               SDL_Renderer* renderer, int windowWidth, int windowHeight,
               GameState& gameState, Uint32 spawnTime, float dt,
-              TTF_Font* fontSmall) {
+              TTF_Font* fontSmall, const Level& level) {
   if (gameState == GameState::PLAYING) {
     player.update(em.mouseX(), em.mouseY());
     player.render(renderer);
 
     // Give 3 second shield
     bool shieldOn = (SDL_GetTicks() - spawnTime) < 3000;
+
+    // Make player stuck until shield is off (only through x-axis for now)
+    if (level.limitingWall.first != 0) {
+      std::cout << "Should be limited";
+      if (player.currentX() + player.radius() >= level.limitingWall.first) {
+        player.setPlayerX(level.limitingWall.first - player.radius());
+        std::cout << "Should be stuck";
+      }
+    }
 
     // Timer
     float survivalTime = (SDL_GetTicks() - spawnTime - 3000) / 1000.0f;
@@ -40,6 +80,19 @@ void gamePlay(Player& player, std::vector<Enemy>& enemies, EventManager& em,
     SDL_Color timerColor = shieldOn ? green : red;
     timerText = shieldOn ? "0.0s" : timerText;
     Texture::renderText(renderer, timerText, fontSmall, timerColor, timerRect);
+
+    for (const auto& wall : level.walls) {
+      boxRGBA(renderer, wall.x, wall.y, wall.x + wall.w, wall.y + wall.h, 100,
+              100, 100, 255);
+
+      // If player touches the wall, they die
+      bool collidedWithWall = Collision::circleRectCollision(
+          player.currentX(), player.currentY(), player.radius(), wall);
+      if (collidedWithWall && !shieldOn) {
+        player.setPlayerState(Player::PlayerState::DEAD);
+        gameState = GameState::MENU;
+      }
+    }
 
     // Setup enemies & Collision
     for (auto it = enemies.begin(); it != enemies.end(); ++it) {
@@ -98,30 +151,24 @@ int main() {
   TTF_Font* fontLarge =
       Initializer.openFont("dejavu-sans/DejaVuSans-Bold.ttf", 144);
 
-  Window window("Window", 1048, 1048);
-  int swidth, sheight; // Start width/height
-  SDL_GetWindowSize(window.window(), &swidth, &sheight);
+  Window window("Window", 1920, 1080);
 
   SDL_Renderer* renderer = window.renderer();
 
   EventManager em(window.window(), false);
 
-  Player player(500, 500, 15);
+  // Level Managing
+  int currentLevel = 1;
+  Level level = loadLevel(currentLevel, em.windowWidth(), em.windowHeight());
+
+  Player player(level.playerSpawnX, level.playerSpawnY, 15);
   GameState gameState = GameState::MENU;
   Uint32 spawnTime = SDL_GetTicks();
 
-  // --- Create enemies ---
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_int_distribution<> distrX(0, swidth);
-  std::uniform_int_distribution<> distrY(0, sheight);
 
-  std::vector<Enemy> enemies;
-  for (int i = 0; i < 50; i++) {
-    enemies.emplace_back(distrX(gen), distrY(gen), 64, 64, "green", 150.0f,
-                         165.0f);
-  }
-  // --- end: Create enemies ---
+  std::vector<Enemy> enemies = loadEnemies(level, gen);
 
   Uint32 lastFrame = SDL_GetTicks();
   bool running = true;
@@ -140,10 +187,22 @@ int main() {
     window.beginFrame();
     // If playing, this will run
     gamePlay(player, enemies, em, renderer, em.windowWidth(), em.windowHeight(),
-             gameState, spawnTime, dt, fontSmall);
+             gameState, spawnTime, dt, fontSmall, level);
     // If menu
     gameMenu(em, renderer, fontLarge, fontSmall, gameState, em.windowWidth(),
              em.windowHeight(), spawnTime);
+
+    // For testing
+    if (em.isKeyPressed(SDLK_UP)) {
+      currentLevel++;
+      level = loadLevel(currentLevel, em.windowWidth(), em.windowHeight());
+      std::cout << currentLevel << std::endl;
+    }
+    if (em.isKeyPressed(SDLK_DOWN)) {
+      currentLevel--;
+      level = loadLevel(currentLevel, em.windowWidth(), em.windowHeight());
+      std::cout << currentLevel << std::endl;
+    }
 
     window.endFrame();
 

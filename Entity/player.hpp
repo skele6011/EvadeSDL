@@ -20,6 +20,9 @@ public:
   int currentX();
   int currentY();
 
+  void setPlayerX(int x);
+  void setPlayerY(int y);
+
   void setPlayerState(PlayerState state);
   PlayerState getPlayerState();
 
