@@ -8,17 +8,14 @@ Editor::Editor(EventManager& em, TTF_Font* smallFont)
 
 bool Editor::update(float dt) {
   // Color/Type picker
-  SDL_Color red = {255, 20, 20, 150};
-  SDL_Color green = {20, 255, 20, 150};
-  SDL_Color gray = {100, 100, 100, 150};
   if (this->em_.isKeyPressed(SDLK_g)) {
-    this->currentType_ = green;
+    this->currentType_ = green_;
   }
   if (this->em_.isKeyPressed(SDLK_r)) {
-    this->currentType_ = red;
+    this->currentType_ = red_;
   }
   if (this->em_.isKeyPressed(SDLK_w)) {
-    this->currentType_ = gray;
+    this->currentType_ = gray_;
   }
 
   bool leftHeld = this->em_.mouseButtons() & SDL_BUTTON(SDL_BUTTON_LEFT);
@@ -41,10 +38,12 @@ bool Editor::update(float dt) {
     this->wallsViewer_.push_back({x, y, w, h}); // for now always adds as wall
 
     // Set walls for screen resizing
-    this->walls_.push_back({(float)x / this->em_.windowWidth(),
-                            (float)y / this->em_.windowHeight(),
-                            (float)w / this->em_.windowWidth(),
-                            (float)h / this->em_.windowHeight()});
+    this->walls_.push_back(
+        std::make_pair(this->currentType_,
+                       NormalizedRect{(float)x / this->em_.windowWidth(),
+                                      (float)y / this->em_.windowHeight(),
+                                      (float)w / this->em_.windowWidth(),
+                                      (float)h / this->em_.windowHeight()}));
 
     this->isDragging_ = false;
   }
@@ -57,8 +56,6 @@ bool Editor::update(float dt) {
   return true;
 }
 
-// Draw the normal int position from wallsViewer_
-// Means you cannot change window size WHILE editing.
 void Editor::render(SDL_Renderer* renderer) {
   // Setup Type Viewer
   SDL_Rect typeViewer{this->em_.windowWidth() - 50, 5, 45, 45};
@@ -77,10 +74,12 @@ void Editor::render(SDL_Renderer* renderer) {
             100); // Semi-transparent for preview
   }
 
-  // Render walls After Drawn
-  for (const auto& wall : this->wallsViewer_) {
-    boxRGBA(renderer, wall.x, wall.y, wall.x + wall.w, wall.y + wall.h,
-            this->currentType_.r, this->currentType_.g, this->currentType_.b,
-            255);
+  // Render walls after drawn (Scale-Work)
+  for (const auto& wall : this->walls_) {
+    boxRGBA(renderer, wall.second.x * this->em_.windowWidth(),
+            wall.second.y * this->em_.windowHeight(),
+            (wall.second.w + wall.second.x) * this->em_.windowWidth(),
+            (wall.second.h + wall.second.y) * this->em_.windowHeight(),
+            wall.first.r, wall.first.g, wall.first.b, 255);
   }
 }

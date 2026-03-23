@@ -4,6 +4,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <nlohmann/json.hpp>
 
+#include <utility>
 #include <vector>
 
 struct NormalizedRect {
@@ -22,8 +23,12 @@ private:
   EventManager& em_;
   TTF_Font* smallFont_;
 
+  SDL_Color red_ = {255, 20, 20, 150};
+  SDL_Color green_ = {20, 255, 20, 150};
+  SDL_Color gray_ = {100, 100, 100, 150};
+
   std::vector<SDL_Rect> wallsViewer_;
-  std::vector<NormalizedRect> walls_;
+  std::vector<std::pair<SDL_Color, NormalizedRect>> walls_;
   std::vector<SDL_Rect> spawnBounds_;
   SDL_Rect limitingWall_;
 
