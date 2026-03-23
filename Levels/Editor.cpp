@@ -38,7 +38,14 @@ bool Editor::update(float dt) {
     y = (y / 5) * 5;
     w = (w / 5) * 5;
     h = (h / 5) * 5;
-    this->walls_.push_back({x, y, w, h}); // for now always adds as wall
+    this->wallsViewer_.push_back({x, y, w, h}); // for now always adds as wall
+
+    // Set walls for screen resizing
+    this->walls_.push_back({(float)x / this->em_.windowWidth(),
+                            (float)y / this->em_.windowHeight(),
+                            (float)w / this->em_.windowWidth(),
+                            (float)h / this->em_.windowHeight()});
+
     this->isDragging_ = false;
   }
 
@@ -50,6 +57,8 @@ bool Editor::update(float dt) {
   return true;
 }
 
+// Draw the normal int position from wallsViewer_
+// Means you cannot change window size WHILE editing.
 void Editor::render(SDL_Renderer* renderer) {
   // Setup Type Viewer
   SDL_Rect typeViewer{this->em_.windowWidth() - 50, 5, 45, 45};
@@ -69,7 +78,7 @@ void Editor::render(SDL_Renderer* renderer) {
   }
 
   // Render walls After Drawn
-  for (const auto& wall : this->walls_) {
+  for (const auto& wall : this->wallsViewer_) {
     boxRGBA(renderer, wall.x, wall.y, wall.x + wall.w, wall.y + wall.h,
             this->currentType_.r, this->currentType_.g, this->currentType_.b,
             255);

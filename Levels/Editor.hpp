@@ -6,6 +6,10 @@
 
 #include <vector>
 
+struct NormalizedRect {
+  float x, y, w, h;
+};
+
 class Editor {
 public:
   Editor(EventManager& em, TTF_Font* smallFont);
@@ -18,7 +22,8 @@ private:
   EventManager& em_;
   TTF_Font* smallFont_;
 
-  std::vector<SDL_Rect> walls_;
+  std::vector<SDL_Rect> wallsViewer_;
+  std::vector<NormalizedRect> walls_;
   std::vector<SDL_Rect> spawnBounds_;
   SDL_Rect limitingWall_;
 
