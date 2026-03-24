@@ -23,7 +23,7 @@ SDLInitializer::SDLInitializer(Uint32 flags, int imgFlags)
 
     // --- Initialize SDL_ttf ---
     if (TTF_Init() == -1) {
-      std::cerr << "TTF_Init Error: " << TTF_GetError() << std::endl;
+        std::cerr << "TTF_Init Error: " << TTF_GetError() << std::endl;
         return;
     }
     this->ttfInitialized_ = true;
