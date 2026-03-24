@@ -118,6 +118,7 @@ int main() {
       gameState = GameState::EDITOR;
     }
 
+    em.clearFrame();
     window.endFrame();
 
     Uint32 frameTime = SDL_GetTicks() - frameStart;

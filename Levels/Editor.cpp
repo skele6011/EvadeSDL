@@ -35,9 +35,9 @@ bool Editor::update(float dt) {
     y = (y / 5) * 5;
     w = (w / 5) * 5;
     h = (h / 5) * 5;
-    this->wallsViewer_.push_back({x, y, w, h}); // for now always adds as wall
+    this->wallsViewer_.push_back({x, y, w, h});
 
-    // Set walls for screen resizing
+    // Set walls for screen resizing - Includes the type
     this->walls_.push_back(
         std::make_pair(this->currentType_,
                        NormalizedRect{(float)x / this->em_.windowWidth(),
@@ -46,6 +46,20 @@ bool Editor::update(float dt) {
                                       (float)h / this->em_.windowHeight()}));
 
     this->isDragging_ = false;
+  }
+
+  // Left click for delete
+  if (this->em_.isMousePressed(SDL_BUTTON_RIGHT)) {
+    float mx = (float)this->em_.mouseX() / this->em_.windowWidth();
+    float my = (float)this->em_.mouseY() / this->em_.windowHeight();
+
+    for (auto it = this->walls_.begin(); it != this->walls_.end(); ++it) {
+      NormalizedRect r = (*it).second;
+      if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+        this->walls_.erase(it);
+        break; // We break bc the iterator is invalid and we already deleted
+      }
+    }
   }
 
   // False = Exit
@@ -63,6 +77,7 @@ void Editor::render(SDL_Renderer* renderer) {
           typeViewer.y + typeViewer.h, this->currentType_.r,
           this->currentType_.g, this->currentType_.b, this->currentType_.a);
 
+  // Draw while dragging
   if (this->isDragging_) {
     int x = std::min(dragStart_.x, this->em_.mouseX());
     int y = std::min(dragStart_.y, this->em_.mouseY());
